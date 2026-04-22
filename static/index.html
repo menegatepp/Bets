@@ -678,7 +678,6 @@
           <td class="book-val">${s.bookmaker}</td>
           <td class="odds-val">${s.odds.toFixed(2)}</td>
           <td class="stake-val">R$ ${s.stake.toFixed(2)}</td>
-          <td class="ret-val">R$ ${s.return_val.toFixed(2)}</td>
           <td class="suggest-val">
             R$ ${sug[i].toFixed(2)}
             <div class="suggest-ret">↳ R$ ${(sug[i] * s.odds).toFixed(2)}</div>
@@ -700,7 +699,7 @@
           <div class="arb-table-wrap">
             <table class="arb-table">
               <thead><tr>
-                <th>Desfecho</th><th>Casa</th><th>Odds</th><th>Apostar</th><th>Retorno</th>
+                <th>Desfecho</th><th>Casa</th><th>Odds</th><th>Apostar</th>
                 <th class="suggest-th">Sugestão</th>
               </tr></thead>
               <tbody>${rows}</tbody>
