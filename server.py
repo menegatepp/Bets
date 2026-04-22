@@ -19,7 +19,7 @@ app = FastAPI(title="CS2 Arb Scanner")
 
 # ── Estado da sessão ──────────────────────────────────────────────
 state = {
-    "bankroll": 500.0,
+    "bankroll": 100.0,
     "odds_lines": [],
     "arbs": [],
 }

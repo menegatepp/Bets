@@ -14,7 +14,7 @@ from display import (
 from arb_engine import scan_for_arbs
 
 session = {
-    "bankroll": 500.0,
+    "bankroll": 100.0,
     "odds_lines": [],
 }
 
