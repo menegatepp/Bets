@@ -18,6 +18,7 @@ class OddsLine:
     outcomes: list
     source: str = "manual"  # "hltv" | "manual"
     commence_time: datetime = field(default_factory=datetime.now)
+    game_datetime: str = ""
 
 
 @dataclass

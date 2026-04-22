@@ -362,6 +362,46 @@
     .toast.info    { background: var(--blue-d);  border: 1px solid var(--blue);  color: #93c5fd; }
     .toast.warning { background: var(--yellow-d);border: 1px solid var(--yellow);color: var(--yellow); }
 
+    /* ── BET FEITA button ── */
+    .btn-bet-feita {
+      width: 100%; padding: 9px 14px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, #7c3aed, #4c1d95);
+      color: #e9d5ff; font-weight: 700; font-size: 13px; cursor: pointer;
+      border: 1px solid #6d28d9; letter-spacing: .5px;
+      transition: all .2s; margin-top: 2px;
+    }
+    .btn-bet-feita:hover { background: linear-gradient(135deg, #8b5cf6, #5b21b6); }
+    .btn-bet-feita.done { background: linear-gradient(135deg, #065f46, #022c22); color: var(--green); border-color: var(--green-d); cursor: default; }
+
+    /* ── Bets history ── */
+    .bet-entry {
+      border: 1px solid #4c1d95; border-radius: var(--radius);
+      background: linear-gradient(135deg, #0f0a1e, #130e26);
+      overflow: hidden; animation: card-in .4s ease;
+    }
+    .bet-entry-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; background: rgba(124,58,237,.08);
+      border-bottom: 1px solid #4c1d95;
+    }
+    .bet-entry-match { font-size: 14px; font-weight: 700; color: var(--text); }
+    .bet-entry-meta { font-size: 11px; color: #a78bfa; margin-top: 2px; }
+    .bet-entry-time { font-size: 11px; color: var(--text3); text-align: right; }
+    .bet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .bet-table th {
+      padding: 7px 14px; text-align: left; font-size: 10px; font-weight: 700;
+      letter-spacing: .8px; text-transform: uppercase; color: var(--text3);
+      border-bottom: 1px solid var(--border);
+    }
+    .bet-table td { padding: 8px 14px; border-bottom: 1px solid rgba(30,47,74,.4); }
+    .bet-table tr:last-child td { border-bottom: none; }
+    .bet-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px; background: rgba(124,58,237,.06);
+      border-top: 1px solid #4c1d95; font-size: 12px;
+    }
+    .bets-empty { color: var(--text3); font-size: 13px; text-align: center; padding: 30px 0; }
+
     /* ── Market label map ── */
     @media (max-width: 900px) {
       .dashboard { grid-template-columns: 1fr; }
@@ -468,6 +508,23 @@
       </div>
     </div>
 
+    <!-- Bets History -->
+    <div class="section-card" id="bets-section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          Bets Realizadas
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge" id="bets-badge">0</span>
+          <button onclick="limparBets()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;">limpar</button>
+        </div>
+      </div>
+      <div class="arbs-grid" id="bets-grid">
+        <div class="bets-empty">Nenhuma bet registrada ainda. Clique em "BET FEITA" em uma arbitragem.</div>
+      </div>
+    </div>
+
     <!-- Odds Table -->
     <div class="section-card">
       <div class="section-header">
@@ -510,6 +567,10 @@
       <div class="field">
         <label>Nome da Partida</label>
         <input id="m-match" type="text" placeholder="ex: 9z vs alka" />
+      </div>
+      <div class="field">
+        <label>Data e Hora do Jogo</label>
+        <input id="m-datetime" type="datetime-local" />
       </div>
       <div class="field">
         <label>Mercado</label>
@@ -629,6 +690,7 @@
 
     renderOdds(data.odds);
     if (data.arbs.length > 0) renderArbs(data.arbs);
+    if (data.bets_history) renderBets(data.bets_history);
   }
 
   // ── Sugestão: arredonda cada stake individualmente ────
@@ -647,6 +709,7 @@
 
   // ── Arbs render ───────────────────────────────────────
   function renderArbs(arbs) {
+    _currentArbs = arbs;
     const grid = document.getElementById("arbs-grid");
     document.getElementById("arb-badge").textContent = arbs.length;
     document.getElementById("stat-arbs").textContent = arbs.length;
@@ -656,7 +719,7 @@
       return;
     }
 
-    grid.innerHTML = arbs.map(arb => {
+    grid.innerHTML = arbs.map((arb, i) => {
       const sug       = arb.stakes.map(s => suggestRoundStake(s.stake));
       const sugSum    = sug.reduce((a, b) => a + b, 0);
       const minSugRet = Math.min(...arb.stakes.map((s, i) => sug[i] * s.odds));
@@ -684,12 +747,14 @@
           </td>
         </tr>`).join("");
 
+      const dtLabel = arb.game_datetime ? `🕐 ${arb.game_datetime}` : "";
+
       return `
-        <div class="arb-card">
+        <div class="arb-card" id="arb-card-${i}">
           <div class="arb-card-header">
             <div>
               <div class="arb-match">${arb.match}</div>
-              <div class="arb-market">${MARKET_LABELS[arb.market] || arb.market}</div>
+              <div class="arb-market">${MARKET_LABELS[arb.market] || arb.market}${dtLabel ? `&nbsp;&nbsp;<span style="color:var(--text3);font-size:11px">${dtLabel}</span>` : ""}</div>
             </div>
             <div style="text-align:right">
               <div class="arb-pct">+${arb.arb_percent.toFixed(2)}%</div>
@@ -716,6 +781,9 @@
             <span class="sug-profit ${profitCls}">
               mín. R$ ${minSugRet.toFixed(2)} (${profitSign}R$ ${Math.abs(sugProfit).toFixed(2)})
             </span>
+          </div>
+          <div style="padding:10px 16px 12px">
+            <button class="btn-bet-feita" id="bet-btn-${i}" onclick="registrarBet(${i})">✅ BET FEITA</button>
           </div>
         </div>`;
     }).join("");
@@ -806,6 +874,7 @@
     document.getElementById("bm-list").innerHTML = "";
     document.getElementById("m-match").value = "";
     document.getElementById("m-market").value = "h2h";
+    document.getElementById("m-datetime").value = "";
     addBookmaker();
     document.getElementById("modal-overlay").classList.add("open");
   }
@@ -892,13 +961,90 @@
 
     if (!bookmakers.length) { toast("error", "Adicione ao menos uma casa."); return; }
 
+    const rawDt = document.getElementById("m-datetime").value;
+    let game_datetime = "";
+    if (rawDt) {
+      const d = new Date(rawDt);
+      game_datetime = d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
     const res = await fetch("/api/manual-odds", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ match_name: matchName, market, bookmakers }),
+      body: JSON.stringify({ match_name: matchName, market, bookmakers, game_datetime }),
     });
     const data = await res.json();
     if (data.ok) { closeModal(); loadState(); toast("success", `${data.added} casa(s) adicionada(s)!`); }
+  }
+
+  // ── BET FEITA ─────────────────────────────────────────
+  let _currentArbs = [];
+
+  async function registrarBet(idx) {
+    const arb = _currentArbs[idx];
+    if (!arb) return;
+    const btn = document.getElementById(`bet-btn-${idx}`);
+    btn.disabled = true;
+    btn.classList.add("done");
+    btn.textContent = "✅ Registrado!";
+    const res = await fetch("/api/bet-feita", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ arb }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      toast("success", `Bet registrada! Total: ${data.total}`);
+      loadState();
+    }
+  }
+
+  function renderBets(bets) {
+    const grid = document.getElementById("bets-grid");
+    const badge = document.getElementById("bets-badge");
+    badge.textContent = bets.length;
+    if (!bets.length) {
+      grid.innerHTML = '<div class="bets-empty">Nenhuma bet registrada ainda. Clique em "BET FEITA" em uma arbitragem.</div>';
+      return;
+    }
+    grid.innerHTML = bets.map((b, i) => {
+      const rows = b.stakes.map(s => `
+        <tr>
+          <td>${s.outcome}</td>
+          <td style="font-size:12px;color:var(--text2)">${s.bookmaker}</td>
+          <td style="font-family:monospace;font-weight:700;color:var(--cyan)">${s.odds.toFixed(2)}</td>
+          <td style="font-weight:700">R$ ${s.stake.toFixed(2)}</td>
+        </tr>`).join("");
+      return `
+        <div class="bet-entry">
+          <div class="bet-entry-header">
+            <div>
+              <div class="bet-entry-match">${b.match}</div>
+              <div class="bet-entry-meta">${MARKET_LABELS[b.market] || b.market}${b.game_datetime ? ` &nbsp;·&nbsp; 🕐 ${b.game_datetime}` : ""}</div>
+            </div>
+            <div class="bet-entry-time">
+              <div style="color:#a78bfa;font-weight:600">+${b.arb_percent.toFixed(2)}%</div>
+              <div>Registrado às</div>
+              <div>${b.registered_at}</div>
+            </div>
+          </div>
+          <table class="bet-table">
+            <thead><tr><th>Desfecho</th><th>Casa</th><th>Odds</th><th>Apostar</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="bet-footer">
+            <span style="color:var(--text2)">Total apostado: <strong style="color:var(--text)">R$ ${b.bankroll.toFixed(2)}</strong></span>
+            <span style="color:#a78bfa;font-weight:700">Lucro garantido: +R$ ${b.guaranteed_profit.toFixed(2)}</span>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  async function limparBets() {
+    if (!confirm("Limpar todo o histórico de bets?")) return;
+    await fetch("/api/bets", { method: "DELETE" });
+    renderBets([]);
+    toast("info", "Histórico limpo.");
   }
 
   // ── Toast ─────────────────────────────────────────────

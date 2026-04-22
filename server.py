@@ -22,6 +22,7 @@ state = {
     "bankroll": 100.0,
     "odds_lines": [],
     "arbs": [],
+    "bets_history": [],
 }
 
 subscribers: list = []
@@ -49,6 +50,7 @@ def serialize_arbs(opps):
         result.append({
             "match": f"{line.team_home} vs {line.team_away}",
             "market": line.market,
+            "game_datetime": line.game_datetime,
             "arb_percent": arb.arb_percent,
             "implied_sum": arb.implied_sum,
             "bankroll": arb.bankroll,
@@ -157,6 +159,7 @@ async def get_state():
         "odds": odds_data,
         "arbs": state["arbs"],
         "odds_count": len(state["odds_lines"]),
+        "bets_history": state["bets_history"],
     }
 
 
@@ -187,6 +190,7 @@ class ManualOddsPayload(BaseModel):
     match_name: str
     market: str
     bookmakers: List[BookmakerInput]
+    game_datetime: str = ""
 
 
 @app.post("/api/manual-odds")
@@ -206,10 +210,33 @@ async def add_manual(data: ManualOddsPayload):
                 market=data.market,
                 outcomes=outcomes,
                 source="manual",
+                game_datetime=data.game_datetime,
             ))
             added += 1
     await broadcast("success", f"✓ {added} casa(s) adicionada(s) para '{data.match_name}'")
     return {"ok": True, "added": added}
+
+
+class BetFeitaPayload(BaseModel):
+    arb: dict
+
+
+@app.post("/api/bet-feita")
+async def bet_feita(data: BetFeitaPayload):
+    entry = {
+        **data.arb,
+        "registered_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+    }
+    state["bets_history"].append(entry)
+    await broadcast("success", f"✅ Bet registrada: {data.arb.get('match', '?')}")
+    return {"ok": True, "total": len(state["bets_history"])}
+
+
+@app.delete("/api/bets")
+async def clear_bets():
+    state["bets_history"] = []
+    await broadcast("info", "🗑 Histórico de bets limpo.")
+    return {"ok": True}
 
 
 @app.delete("/api/odds")
